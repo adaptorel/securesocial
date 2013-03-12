@@ -155,7 +155,7 @@ class DefaultAuthenticatorStore(app: Application) extends AuthenticatorStore(app
     Right(())
   }
   def find(id: String): Either[Error, Option[Authenticator]] = {
-    Right(Option(Authenticator.deserialize(id)).filter(_.isValid))
+    Right(Authenticator.deserialize(id).filter(_.isValid))
   }
   def delete(id: String): Either[Error, Unit] = {
     Right(())
@@ -242,10 +242,10 @@ object Authenticator {
   def delete(id: String): Either[Error, Unit] = {
     use[AuthenticatorStore].delete(id)
   }
-  
+
   private val DateTimePattern = "yyyy-MM-dd HH:mm:ss"
-  private val fmt = org.joda.time.format.DateTimeFormat.forPattern(DateTimePattern)  
-  private val Sep = "//__//__"  
+  private val fmt = org.joda.time.format.DateTimeFormat.forPattern(DateTimePattern)
+  private val Sep = "//__//__"
   def serialize(a: Authenticator): String = List(a.userId.id, a.userId.providerId, a.creationDate.toString(DateTimePattern), a.lastUsed.toString(DateTimePattern), a.expirationDate.toString(DateTimePattern)).mkString(Sep)
-  def deserialize(a: String): Authenticator = {val s = a.split(Sep); Authenticator("", UserId(s(0), s(1)), DateTime.parse(s(2), fmt), DateTime.parse(s(3), fmt), DateTime.parse(s(4), fmt))}
+  def deserialize(auth: String): Option[Authenticator] = Option(auth) map { a => val s = a.split(Sep); Authenticator("", UserId(s(0), s(1)), DateTime.parse(s(2), fmt), DateTime.parse(s(3), fmt), DateTime.parse(s(4), fmt)) }
 }
