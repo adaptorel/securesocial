@@ -125,7 +125,7 @@ abstract class AuthenticatorStore(app: Application) extends Plugin {
    * @param authenticator the authenticator
    * @return Error if there was a problem saving the authenticator or Unit if all went ok
    */
-  def save(authenticator: Authenticator): Either[Error, Unit]
+  def save(authenticator: Authenticator): Either[Error, Authenticator]
 
   /**
    * Finds an authenticator by id in the store
@@ -151,8 +151,8 @@ abstract class AuthenticatorStore(app: Application) extends Plugin {
  * @param app
  */
 class DefaultAuthenticatorStore(app: Application) extends AuthenticatorStore(app) {
-  def save(authenticator: Authenticator): Either[Error, Unit] = {
-    Right(())
+  def save(authenticator: Authenticator): Either[Error, Authenticator] = {
+    Right(authenticator)
   }
   def find(id: String): Either[Error, Option[Authenticator]] = {
     Right(Authenticator.deserialize(id).filter(_.isValid))
@@ -220,7 +220,7 @@ object Authenticator {
    * @param authenticator the authenticator
    * @return Error if there was a problem saving the authenticator or Unit if all went ok
    */
-  def save(authenticator: Authenticator): Either[Error, Unit] = {
+  def save(authenticator: Authenticator): Either[Error, Authenticator] = {
     use[AuthenticatorStore].save(authenticator)
   }
   /**
