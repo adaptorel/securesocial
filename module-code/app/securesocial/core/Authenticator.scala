@@ -155,6 +155,9 @@ class DefaultAuthenticatorStore(app: Application) extends AuthenticatorStore(app
     Right(authenticator)
   }
   def find(id: String): Either[Error, Option[Authenticator]] = {
+    if ( play.api.Logger.isDebugEnabled ) {
+      play.api.Logger.debug("[securesocial] find athor by ID : %s, found: %s, valid: %s".format(id, Authenticator.deserialize(id).toString, "" + Authenticator.deserialize(id).map(_.isValid).getOrElse("-none")))
+    }
     Right(Authenticator.deserialize(id).filter(_.isValid))
   }
   def delete(id: String): Either[Error, Unit] = {
@@ -247,5 +250,5 @@ object Authenticator {
   private val fmt = org.joda.time.format.DateTimeFormat.forPattern(DateTimePattern)
   private val Sep = "//__//__"
   def serialize(a: Authenticator): String = List(a.userId.id, a.userId.providerId, a.creationDate.toString(DateTimePattern), a.lastUsed.toString(DateTimePattern), a.expirationDate.toString(DateTimePattern)).mkString(Sep)
-  def deserialize(auth: String): Option[Authenticator] = Option(auth) map { a => val s = a.split(Sep); Authenticator("", UserId(s(0), s(1)), DateTime.parse(s(2), fmt), DateTime.parse(s(3), fmt), DateTime.parse(s(4), fmt)) }
+  def deserialize(auth: String): Option[Authenticator] = Option(auth).filter(""!=_.trim) map { a => val s = a.split(Sep); Authenticator("", UserId(s(0), s(1)), DateTime.parse(s(2), fmt), DateTime.parse(s(3), fmt), DateTime.parse(s(4), fmt)) }
 }
