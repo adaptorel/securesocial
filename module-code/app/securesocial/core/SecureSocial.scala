@@ -80,8 +80,9 @@ trait SecureSocial extends Controller {
         authenticator <- SecureSocial.authenticatorFromRequest ;
         user <- UserService.find(authenticator.userId)
       ) yield {
+        touch(authenticator)
         if ( authorize.isEmpty || authorize.get.isAuthorized(user)) {
-          f(SecuredRequest(user, request)).withCookies(touch(authenticator).toCookie)
+          f(SecuredRequest(user, request))
         } else {
           if ( ajaxCall ) {
             ajaxCallNotAuthorized(request)
@@ -164,16 +165,14 @@ trait SecureSocial extends Controller {
    */
   def UserAwareAction[A](p: BodyParser[A])(f: RequestWithUser[A] => Result) = Action(p) {
     implicit request => {
-      val user_authenticator = for (
+      val user = for (
         authenticator <- SecureSocial.authenticatorFromRequest ;
         user <- UserService.find(authenticator.userId)
       ) yield {
-        (user, touch(authenticator))
+        touch(authenticator)
+        user
       }
-      val u = user_authenticator.map(u_a => u_a._1)
-      user_authenticator.map { u_a =>
-        f(RequestWithUser(u, request)).withCookies(u_a._2.toCookie)
-      } getOrElse f(RequestWithUser(u, request))
+      f(RequestWithUser(user, request))
     }
   }
 
@@ -186,11 +185,8 @@ trait SecureSocial extends Controller {
     UserAwareAction(parse.anyContent)(f)
   }
 
-  def touch(authenticator: Authenticator): Authenticator = {
-    Authenticator.save(authenticator.touch) match {
-      case Right(a) => a
-      case Left(err) => Logger.error("authenticator touch failed!", err); throw new AuthenticationException
-    }
+  def touch(authenticator: Authenticator) {
+    Authenticator.save(authenticator.touch)
   }
 }
 
