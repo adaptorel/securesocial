@@ -155,9 +155,6 @@ class DefaultAuthenticatorStore(app: Application) extends AuthenticatorStore(app
     Right(authenticator)
   }
   def find(id: String): Either[Error, Option[Authenticator]] = {
-    if ( play.api.Logger.isDebugEnabled ) {
-      play.api.Logger.debug("[securesocial] find athor by ID : %s, found: %s, valid: %s".format(id, Authenticator.deserialize(id).toString, "" + Authenticator.deserialize(id).map(_.isValid).getOrElse("-none")))
-    }
     Right(Authenticator.deserialize(id).filter(_.isValid))
   }
   def delete(id: String): Either[Error, Unit] = {
