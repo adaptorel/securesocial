@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
+ * Copyright 2012-2014 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ abstract class PasswordValidator extends Plugin {
 }
 
 /**
- * A default password validator that only checks a mnimum length.
+ * A default password validator that only checks a minimum length.
  * The minimum length can be configured setting a minimumPasswordLength property for userpass.
  * Defaults to 8 if not specified.
  */
@@ -54,6 +54,5 @@ class DefaultPasswordValidator(application: Application) extends PasswordValidat
 
 object DefaultPasswordValidator {
   val PasswordLengthProperty = "securesocial.userpass.minimumPasswordLength"
-  val DefaultLength = 6
+  val DefaultLength = 8
 }
-

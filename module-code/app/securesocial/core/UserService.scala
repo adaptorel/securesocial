@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
+ * Copyright 2012-2014 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ trait UserService {
    * @param id the user id
    * @return an optional user
    */
-  def find(id: UserId):Option[Identity]
+  def find(id: IdentityId):Option[Identity]
 
   /**
    * Finds a Social user by email and provider id.
@@ -64,7 +64,6 @@ trait UserService {
    * implementation
    *
    * @param token The token to save
-   * @return A string with a uuid that will be embedded in the welcome email.
    */
   def save(token: Token)
 
@@ -127,7 +126,7 @@ abstract class UserServicePlugin(application: Application) extends Plugin with U
 
     cancellable = if ( UsernamePasswordProvider.enableTokenJob ) {
       Some(
-        Akka.system.scheduler.schedule(0 seconds, i minutes) {
+        Akka.system.scheduler.schedule(0.seconds, i.minutes) {
           if ( Logger.isDebugEnabled ) {
             Logger.debug("[securesocial] calling deleteExpiredTokens()")
           }
@@ -151,7 +150,7 @@ object UserService {
     delegate = Some(service)
   }
 
-  def find(id: UserId):Option[Identity] = {
+  def find(id: IdentityId):Option[Identity] = {
     delegate.map( _.find(id) ).getOrElse {
       notInitialized()
       None

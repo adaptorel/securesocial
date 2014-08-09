@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
+ * Copyright 2012-2014 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,8 +49,13 @@ object LoginPage extends Controller
       Redirect( to )
     } else {
       import com.typesafe.plugin._
-      import Play.current
-      Ok(use[TemplatesPlugin].getLoginPage(request, UsernamePasswordProvider.loginForm))
+      if ( SecureSocial.enableRefererAsOriginalUrl ) {
+        SecureSocial.withRefererAsOriginalUrl(Ok(use[TemplatesPlugin].getLoginPage(request, UsernamePasswordProvider.loginForm)))
+      } else {
+        import Play.current
+        Ok(use[TemplatesPlugin].getLoginPage(request, UsernamePasswordProvider.loginForm))
+
+      }
     }
   }
 
@@ -64,7 +69,7 @@ object LoginPage extends Controller
     val to = Play.configuration.getString(onLogoutGoTo).getOrElse(RoutesHelper.login().absoluteURL(IdentityProvider.sslEnabled))
     val user = for (
       authenticator <- SecureSocial.authenticatorFromRequest ;
-      user <- UserService.find(authenticator.userId)
+      user <- UserService.find(authenticator.identityId)
     ) yield {
       Authenticator.delete(authenticator.id)
       user

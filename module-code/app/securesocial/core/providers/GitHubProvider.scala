@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
+ * Copyright 2012-2014 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package securesocial.core.providers
 import securesocial.core._
 import play.api.{Logger, Application}
 import play.api.libs.ws.WS
-import securesocial.core.UserId
+import securesocial.core.IdentityId
 import securesocial.core.SocialUser
 import play.api.libs.ws.Response
 import securesocial.core.AuthenticationException
@@ -42,12 +42,19 @@ class GitHubProvider(application: Application) extends OAuth2Provider(applicatio
   override def id = GitHubProvider.GitHub
 
   override protected def buildInfo(response: Response): OAuth2Info = {
-    response.body.split("&|=") match {
-      case Array(AccessToken, token, TokenType, tokenType) => OAuth2Info(token, Some(tokenType), None)
-      case _ =>
-        Logger.error("[securesocial] invalid response format for accessToken")
-        throw new AuthenticationException()
+    val values: Map[String, String] = response.body.split("&").map( _.split("=") ).withFilter(_.size == 2)
+        .map( r => (r(0), r(1)))(collection.breakOut)
+    val accessToken = values.get(OAuth2Constants.AccessToken)
+    if ( accessToken.isEmpty ) {
+      Logger.error("[securesocial] did not get accessToken from %s".format(id))
+      throw new AuthenticationException()
     }
+    OAuth2Info(
+      accessToken.get,
+      values.get(OAuth2Constants.TokenType),
+      values.get(OAuth2Constants.ExpiresIn).map(_.toInt),
+      values.get(OAuth2Constants.RefreshToken)
+    )
   }
 
   /**
@@ -73,7 +80,7 @@ class GitHubProvider(application: Application) extends OAuth2Provider(applicatio
           val avatarUrl = (me \ AvatarUrl).asOpt[String]
           val email = (me \ Email).asOpt[String].filter( !_.isEmpty )
           user.copy(
-            id = UserId(userId.toString, id),
+            identityId = IdentityId(userId.toString, id),
             fullName = displayName,
             avatarUrl = avatarUrl,
             email = email

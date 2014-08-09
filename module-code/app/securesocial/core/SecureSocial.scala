@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
+ * Copyright 2012-2014 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,10 @@ import providers.utils.RoutesHelper
 import play.api.i18n.Messages
 import play.api.Logger
 import play.api.libs.json.Json
+import play.api.http.HeaderNames
+import scala.concurrent.Future
 import scala.Some
+import play.api.mvc.SimpleResult
 import play.api.libs.oauth.ServiceInfo
 
 
@@ -52,42 +55,73 @@ trait SecureSocial extends Controller {
    * @tparam A
    * @return
    */
-  private def ajaxCallNotAuthenticated[A](implicit request: Request[A]): PlainResult = {
+  private def ajaxCallNotAuthenticated[A](implicit request: Request[A]): SimpleResult = {
     Unauthorized(Json.toJson(Map("error"->"Credentials required"))).as(JSON)
   }
 
-  private def ajaxCallNotAuthorized[A](implicit request: Request[A]): PlainResult = {
+  private def ajaxCallNotAuthorized[A](implicit request: Request[A]): SimpleResult = {
     Forbidden( Json.toJson(Map("error" -> "Not authorized"))).as(JSON)
   }
 
   /**
    * A secured action.  If there is no user in the session the request is redirected
    * to the login page
+   */
+  object SecuredAction extends SecuredActionBuilder[SecuredRequest[_]] {
+    /**
+     * Creates a secured action
+     */
+    def apply[A]() = new SecuredActionBuilder[A](false, None)
+
+    /**
+     * Creates a secured action
+     *
+     * @param ajaxCall a boolean indicating whether this is an ajax call or not
+     */
+    def apply[A](ajaxCall: Boolean) = new SecuredActionBuilder[A](ajaxCall, None)
+
+    /**
+     * Creates a secured action
+     * @param authorize an Authorize object that checks if the user is authorized to invoke the action
+     */
+    def apply[A](authorize: Authorization) = new SecuredActionBuilder[A](false, Some(authorize))
+
+    /**
+     * Creates a secured action
+     * @param ajaxCall a boolean indicating whether this is an ajax call or not
+     * @param authorize an Authorize object that checks if the user is authorized to invoke the action
+     */
+    def apply[A](ajaxCall: Boolean, authorize: Authorization) = new SecuredActionBuilder[A](ajaxCall, Some(authorize))
+  }
+
+/**
+   * A builder for secured actions
    *
    * @param ajaxCall a boolean indicating whether this is an ajax call or not
    * @param authorize an Authorize object that checks if the user is authorized to invoke the action
-   * @param p the body parser to use
-   * @param f the wrapped action to invoke
    * @tparam A
-   * @return
    */
-  def SecuredAction[A](ajaxCall: Boolean, authorize: Option[Authorization], p: BodyParser[A])
-                      (f: SecuredRequest[A] => Result)
-                       = Action(p) {
-    implicit request => {
+  class SecuredActionBuilder[A](ajaxCall: Boolean = false, authorize: Option[Authorization] = None)
+    extends ActionBuilder[({ type R[A] = SecuredRequest[A] })#R] {
 
+    def invokeSecuredBlock[A](ajaxCall: Boolean, authorize: Option[Authorization], request: Request[A],
+                              block: SecuredRequest[A] => Future[SimpleResult]): Future[SimpleResult] =
+    {
+      implicit val req = request
       val result = for (
         authenticator <- SecureSocial.authenticatorFromRequest ;
-        user <- UserService.find(authenticator.userId)
+        user <- UserService.find(authenticator.identityId)
       ) yield {
         touch(authenticator)
         if ( authorize.isEmpty || authorize.get.isAuthorized(user)) {
-          f(SecuredRequest(user, request))
+          block(SecuredRequest(user, request))
         } else {
-          if ( ajaxCall ) {
-            ajaxCallNotAuthorized(request)
-          } else {
-            Redirect(RoutesHelper.notAuthorized.absoluteURL(IdentityProvider.sslEnabled))
+          Future.successful {
+            if ( ajaxCall ) {
+              ajaxCallNotAuthorized(request)
+            } else {
+              Redirect(RoutesHelper.notAuthorized.absoluteURL(IdentityProvider.sslEnabled))
+            }
           }
         }
       }
@@ -99,90 +133,37 @@ trait SecureSocial extends Controller {
         val response = if ( ajaxCall ) {
           ajaxCallNotAuthenticated(request)
         } else {
-          Redirect(RoutesHelper.login()).flashing("error" -> Messages("securesocial.loginRequired")).withSession(
-            session + (SecureSocial.OriginalUrlKey -> request.uri)
+          Redirect(RoutesHelper.login().absoluteURL(IdentityProvider.sslEnabled))
+            .flashing("error" -> Messages("securesocial.loginRequired"))
+            .withSession(session + (SecureSocial.OriginalUrlKey -> request.uri)
           )
         }
-        response.discardingCookies(Authenticator.discardingCookie)
+        Future.successful(response.discardingCookies(Authenticator.discardingCookie))
       })
     }
+
+    def invokeBlock[A](request: Request[A], block: SecuredRequest[A] => Future[SimpleResult]) =
+       invokeSecuredBlock(ajaxCall, authorize, request, block)
   }
 
-  /**
-   * A secured action.  If there is no user in the session the request is redirected
-   * to the login page.
-   *
-   * @param ajaxCall a boolean indicating whether this is an ajax call or not
-   * @param authorize an Authorize object that checks if the user is authorized to invoke the action
-   * @param f the wrapped action to invoke
-   * @return
-   */
-  def SecuredAction(ajaxCall: Boolean, authorize: Authorization)
-                   (f: SecuredRequest[AnyContent] => Result): Action[AnyContent] =
-    SecuredAction(ajaxCall, Some(authorize), p = parse.anyContent)(f)
 
   /**
-   * A secured action.  If there is no user in the session the request is redirected
-   * to the login page.
-   *
-   * @param authorize an Authorize object that checks if the user is authorized to invoke the action
-   * @param f the wrapped action to invoke
-   * @return
+   * An action that adds the current user in the request if it's available.
    */
-  def SecuredAction(authorize: Authorization)
-                   (f: SecuredRequest[AnyContent] => Result): Action[AnyContent] =
-    SecuredAction(false,authorize)(f)
-
-  /**
-   * A secured action.  If there is no user in the session the request is redirected
-   * to the login page.
-   *
-   * @param ajaxCall a boolean indicating whether this is an ajax call or not
-   * @param f the wrapped action to invoke
-   * @return
-   */
-  def SecuredAction(ajaxCall: Boolean)
-                   (f: SecuredRequest[AnyContent] => Result): Action[AnyContent] =
-    SecuredAction(ajaxCall, None, parse.anyContent)(f)
-
-  /**
-   * A secured action.  If there is no user in the session the request is redirected
-   * to the login page.
-   *
-   * @param f the wrapped action to invoke
-   * @return
-   */
-  def SecuredAction(f: SecuredRequest[AnyContent] => Result): Action[AnyContent] =
-    SecuredAction(false)(f)
-
-  /**
-   * An action that adds the current user in the request if it's available
-   *
-   * @param p
-   * @param f
-   * @tparam A
-   * @return
-   */
-  def UserAwareAction[A](p: BodyParser[A])(f: RequestWithUser[A] => Result) = Action(p) {
-    implicit request => {
+  object UserAwareAction extends ActionBuilder[RequestWithUser] {
+    protected def invokeBlock[A](request: Request[A],
+                                 block: (RequestWithUser[A]) => Future[SimpleResult]): Future[SimpleResult] =
+    {
+      implicit val req = request
       val user = for (
         authenticator <- SecureSocial.authenticatorFromRequest ;
-        user <- UserService.find(authenticator.userId)
+        user <- UserService.find(authenticator.identityId)
       ) yield {
         touch(authenticator)
         user
       }
-      f(RequestWithUser(user, request))
+      block(RequestWithUser(user, request))
     }
-  }
-
-  /**
-   * An action that adds the current user in the request if it's available
-   * @param f
-   * @return
-   */
-  def UserAwareAction(f: RequestWithUser[AnyContent] => Result): Action[AnyContent] = {
-    UserAwareAction(parse.anyContent)(f)
   }
 
   def touch(authenticator: Authenticator) {
@@ -224,11 +205,15 @@ object SecureSocial {
    * @return
    */
   def currentUser[A](implicit request: RequestHeader):Option[Identity] = {
-    for (
-      authenticator <- authenticatorFromRequest ;
-      user <- UserService.find(authenticator.userId)
-    ) yield {
-      user
+    request match {
+      case securedRequest: SecuredRequest[_] => Some(securedRequest.user)
+      case userAware: RequestWithUser[_] => userAware.user
+      case _ => for (
+            authenticator <- authenticatorFromRequest ;
+            user <- UserService.find(authenticator.identityId)
+          ) yield {
+            user
+          }
     }
   }
 
@@ -239,9 +224,37 @@ object SecureSocial {
    * @return an optional service info
    */
   def serviceInfoFor(user: Identity): Option[ServiceInfo] = {
-    Registry.providers.get(user.id.providerId) match {
+    Registry.providers.get(user.identityId.providerId) match {
       case Some(p: OAuth1Provider) if p.authMethod == AuthenticationMethod.OAuth1 => Some(p.serviceInfo)
       case _ => None
     }
+  }
+
+  /**
+   * Saves the referer as original url in the session if it's not yet set.
+   * @param result the result that maybe enhanced with an updated session
+   * @return the result that's returned to the client
+   */
+  def withRefererAsOriginalUrl[A](result: Result)(implicit request: Request[A]): Result = {
+    request.session.get(OriginalUrlKey) match {
+      // If there's already an original url recorded we keep it: e.g. if s.o. goes to
+      // login, switches to signup and goes back to login we want to keep the first referer
+      case Some(_) => result
+      case None => {
+        request.headers.get(HeaderNames.REFERER).map { referer =>
+          // we don't want to use the ful referer, as then we might redirect from https
+          // back to http and loose our session. So let's get the path and query string only
+          val idxFirstSlash = referer.indexOf("/", "https://".length())
+          val refererUri = if (idxFirstSlash < 0) "/" else referer.substring(idxFirstSlash)
+          result.withSession(
+            request.session + (OriginalUrlKey -> refererUri))
+        }.getOrElse(result)
+      }
+    }
+  }
+
+  val enableRefererAsOriginalUrl = {
+    import play.api.Play
+    Play.current.configuration.getBoolean("securesocial.enableRefererAsOriginalUrl").getOrElse(false)
   }
 }

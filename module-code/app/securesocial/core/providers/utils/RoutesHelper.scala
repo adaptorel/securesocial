@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
+ * Copyright 2012-2014 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package securesocial.core.providers.utils
 import play.api.mvc.Call
 import play.Play
 import play.Logger
+import scala.language.reflectiveCalls
 
 /**
  *
@@ -90,9 +91,22 @@ object RoutesHelper {
     Play.application().classloader().loadClass(clazz)
   }
 
-  lazy val assetsControllerMethods = assets.newInstance().asInstanceOf[{
-    def at(file: String): Call
-  }]
+  private lazy val assetsPath = conf.getString("securesocial.assetsPath").getOrElse("/public")
+  private type SimpleAt = { def at(file: String): Call }
+  private type AtWithPath = { def at(path: String, file: String): Call }
+  private case class AtHelper(impl: AtWithPath)  {
+    def at(file: String): Call = impl.at(assetsPath, file)
+  }
+
+  lazy val assetsControllerMethods: SimpleAt = {
+    val instance = assets.newInstance()
+    try {
+      instance.getClass.getMethod("at", classOf[String], classOf[String])
+      AtHelper(instance.asInstanceOf[AtWithPath])
+    } catch {
+      case e: NoSuchMethodException => instance.asInstanceOf[SimpleAt]
+    }
+  }
 
   def at(file: String) = assetsControllerMethods.at(file)
 

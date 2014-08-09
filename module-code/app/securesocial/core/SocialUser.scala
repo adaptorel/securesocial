@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
+ * Copyright 2012-2014 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@ package securesocial.core
 
 
 /**
- * This trait represents a user.  Using this trait you to return you can return your own object from the
- * UserService.find methods if you need to instead of returning a SocialUser.
+ * This trait represents a user.  Using this trait you can return your own object from the
+ * UserService. Find methods if you need to instead of returning a SocialUser.
  *
  * In your controller actions you can then convert this Identity to your own class using pattern matching in Scala
  * or a cast in Java.
@@ -30,7 +30,7 @@ package securesocial.core
  *
  */
 trait Identity {
-  def id: UserId
+  def identityId: IdentityId
   def firstName: String
   def lastName: String
   def fullName: String
@@ -45,7 +45,7 @@ trait Identity {
 /**
  * An implementation of Identity.  Used by SecureSocial to gather user information when users sign up and/or sign in.
  */
-case class SocialUser(id: UserId, firstName: String, lastName: String, fullName: String, email: Option[String],
+case class SocialUser(identityId: IdentityId, firstName: String, lastName: String, fullName: String, email: Option[String],
                       avatarUrl: Option[String], authMethod: AuthenticationMethod,
                       oAuth1Info: Option[OAuth1Info] = None,
                       oAuth2Info: Option[OAuth2Info] = None,
@@ -54,7 +54,7 @@ case class SocialUser(id: UserId, firstName: String, lastName: String, fullName:
 object SocialUser {
   def apply(i: Identity): SocialUser = {
     SocialUser(
-      i.id, i.firstName, i.lastName, i.fullName,
+      i.identityId, i.firstName, i.lastName, i.fullName,
       i.email, i.avatarUrl, i.authMethod, i.oAuth1Info,
       i.oAuth2Info, i.passwordInfo
     )
@@ -64,10 +64,10 @@ object SocialUser {
 /**
  * The ID of an Identity
  *
- * @param id the id on the provider the user came from (eg: twitter, facebook)
+ * @param userId the user id on the provider the user came from (eg: twitter, facebook)
  * @param providerId the provider used to sign in
  */
-case class UserId(id: String, providerId: String)
+case class IdentityId(userId: String, providerId: String)
 
 /**
  * The OAuth 1 details

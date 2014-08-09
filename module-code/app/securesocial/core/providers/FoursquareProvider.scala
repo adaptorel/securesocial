@@ -18,7 +18,7 @@ package securesocial.core.providers
 
 import securesocial.core._
 import play.api.{Logger, Application}
-import securesocial.core.UserId
+import securesocial.core.IdentityId
 import securesocial.core.SocialUser
 import play.api.libs.ws.WS
 import securesocial.core.AuthenticationException
@@ -75,11 +75,11 @@ class FoursquareProvider(application: Application) extends OAuth2Provider(applic
           val email = (me \ Response \ User \ Contact \ Email).asOpt[String].filter( !_.isEmpty )
 
           user.copy(
-            id = UserId(userId.get , id),
+            identityId = IdentityId(userId.get , id),
             lastName = lastName,
             firstName = firstName,
             fullName = firstName + " " + lastName,
-            avatarUrl = Some(avatarUrlPart1.get + "100x100" + avatarUrlPart2.get),
+            avatarUrl = for (prefix <- avatarUrlPart1; postfix <- avatarUrlPart2) yield prefix + "100x100" + postfix,
             email = email
           )
         }

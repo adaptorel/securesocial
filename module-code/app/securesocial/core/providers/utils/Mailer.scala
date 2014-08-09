@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
+ * Copyright 2012-2014 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -81,11 +81,11 @@ object Mailer {
       Logger.debug("[securesocial] mail = [%s]".format(body))
     }
 
-    Akka.system.scheduler.scheduleOnce(1 seconds) {
+    Akka.system.scheduler.scheduleOnce(1.seconds) {
       val mail = use[MailerPlugin].email
       mail.setSubject(subject)
-      mail.addRecipient(recipient)
-      mail.addFrom(fromAddress)
+      mail.setRecipient(recipient)
+      mail.setFrom(fromAddress)
       // the mailer plugin handles null / empty string gracefully
       mail.send(body._1.map(_.body).getOrElse(""), body._2.map(_.body).getOrElse(""))
     }

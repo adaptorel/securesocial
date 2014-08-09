@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
+ * Copyright 2012-2014 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,10 +51,10 @@ object ProviderController extends Controller
   /**
    * Returns the url that the user should be redirected to after login
    *
-   * @param request
+   * @param session
    * @return
    */
-  def toUrl(implicit request: RequestHeader) = session.get(SecureSocial.OriginalUrlKey).getOrElse(landingUrl)
+  def toUrl(session: Session) = session.get(SecureSocial.OriginalUrlKey).getOrElse(landingUrl)
 
   /**
    * The url where the user needs to be redirected after succesful authentication.
@@ -107,14 +107,14 @@ object ProviderController extends Controller
     }
   }
 
-  def completeAuthentication(user: Identity, session: Session)(implicit request: RequestHeader): PlainResult = {
+  def completeAuthentication(user: Identity, session: Session)(implicit request: RequestHeader): SimpleResult = {
     if ( Logger.isDebugEnabled ) {
       Logger.debug("[securesocial] user logged in : [" + user + "]")
     }
     val withSession = Events.fire(new LoginEvent(user)).getOrElse(session)
     Authenticator.create(user) match {
       case Right(authenticator) => {
-        Redirect(toUrl).withSession(withSession -
+        Redirect(toUrl(withSession)).withSession(withSession -
           SecureSocial.OriginalUrlKey -
           IdentityProvider.SessionId -
           OAuth1Provider.CacheKey).withCookies(authenticator.toCookie)

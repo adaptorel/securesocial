@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
+ * Copyright 2012-2014 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,18 +56,18 @@ class GoogleProvider(application: Application) extends OAuth2Provider(applicatio
           throw new AuthenticationException()
         case _ =>
           val userId = (me \ Id).as[String]
-          val firstName = (me \ GivenName).as[String]
-          val lastName = (me \ FamilyName).as[String]
-          val fullName = (me \ Name).as[String]
+          val firstName = (me \ GivenName).asOpt[String]
+          val lastName = (me \ FamilyName).asOpt[String]
+          val fullName = (me \ Name).asOpt[String]
           val avatarUrl = ( me \ Picture).asOpt[String]
-          val email = ( me \ Email).as[String]
+          val email = ( me \ Email).asOpt[String]
           user.copy(
-            id = UserId(userId, id),
-            firstName = firstName,
-            lastName = lastName,
-            fullName = fullName,
+            identityId = IdentityId(userId, id),
+            firstName = firstName.getOrElse(""),
+            lastName = lastName.getOrElse(""),
+            fullName = fullName.getOrElse(""),
             avatarUrl = avatarUrl,
-            email = Some(email)
+            email = email
           )
       }
     } catch {

@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
+ * Copyright 2012-2014 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import play.Application;
 import play.libs.Scala;
 import scala.Option;
 import securesocial.core.Identity;
-import securesocial.core.UserId;
+import securesocial.core.IdentityId;
 
 import java.lang.reflect.Field;
 
@@ -56,7 +56,7 @@ public abstract class BaseUserService extends securesocial.core.UserServicePlugi
      * @return an optional user
      */
     @Override
-    public Option<securesocial.core.Identity> find(securesocial.core.UserId id) {
+    public Option<securesocial.core.Identity> find(IdentityId id) {
         Identity identity = doFind(id);
         return Scala.Option(identity);
     }
@@ -166,7 +166,7 @@ public abstract class BaseUserService extends securesocial.core.UserServicePlugi
      * Finds the user in the backing store.
      * @return an Identity instance or null if no user matches the specified id
      */
-    public abstract Identity doFind(UserId userId);
+    public abstract Identity doFind(IdentityId identityId);
 
     /**
      * Finds a token

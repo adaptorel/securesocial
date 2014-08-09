@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
+ * Copyright 2012-2014 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,6 +46,7 @@ class FacebookProvider(application: Application) extends OAuth2Provider(applicat
   override protected def buildInfo(response: Response): OAuth2Info = {
     response.body.split("&|=") match {
         case Array(AccessToken, token, Expires, expiresIn) => OAuth2Info(token, None, Some(expiresIn.toInt))
+        case Array(AccessToken, token) => OAuth2Info(token)
         case _ =>
           Logger.error("[securesocial] invalid response format for accessToken")
           throw new AuthenticationException()
@@ -78,7 +79,7 @@ class FacebookProvider(application: Application) extends OAuth2Provider(applicat
           val email = ( me \ Email).as[String]
 
           user.copy(
-            id = UserId(userId, id),
+            identityId = IdentityId(userId, id),
             firstName = firstName,
             lastName = lastName,
             fullName = name,

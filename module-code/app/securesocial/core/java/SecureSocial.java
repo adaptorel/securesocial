@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
+ * Copyright 2012-2014 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,19 +16,18 @@
  */
 package securesocial.core.java;
 
-import org.codehaus.jackson.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import play.Logger;
 import play.api.libs.oauth.ServiceInfo;
+import static play.libs.F.Promise;
 import play.libs.Json;
 import play.libs.Scala;
-import play.mvc.Action;
-import play.mvc.Http;
-import play.mvc.Result;
-import play.mvc.With;
+import play.mvc.*;
 import scala.Option;
 import scala.util.Either;
 import securesocial.core.Authenticator;
 import securesocial.core.Identity;
+import securesocial.core.IdentityProvider;
 import securesocial.core.SecureSocial$;
 import securesocial.core.UserService$;
 import securesocial.core.providers.utils.RoutesHelper;
@@ -137,7 +136,7 @@ public class SecureSocial {
         Identity result = null;
 
          if ( authenticator != null ) {
-             Option<Identity> optionalIdentity = UserService$.MODULE$.find(authenticator.userId());
+             Option<Identity> optionalIdentity = UserService$.MODULE$.find(authenticator.identityId());
              result = Scala.orNull(optionalIdentity);
 
          }
@@ -193,7 +192,7 @@ public class SecureSocial {
     public static class Secured extends Action<SecuredAction> {
 
         @Override
-        public Result call(Http.Context ctx) throws Throwable {
+        public Promise<SimpleResult> call(Http.Context ctx) throws Throwable {
             try {
                 fixHttpContext(ctx);
                 final Authenticator authenticator = getAuthenticatorFromRequest(ctx);
@@ -203,11 +202,11 @@ public class SecureSocial {
                         Logger.debug("[securesocial] anonymous user trying to access : " + ctx.request().uri());
                     }
                     if ( configuration.ajaxCall() ) {
-                        return unauthorized(ajaxCallNotAuthenticated());
+                        return Promise.pure((SimpleResult)unauthorized(ajaxCallNotAuthenticated()));
                     } else {
                         ctx.flash().put("error", play.i18n.Messages.get("securesocial.loginRequired"));
                         ctx.session().put(ORIGINAL_URL, ctx.request().uri());
-                        return redirect(RoutesHelper.login());
+                        return Promise.pure(redirect(RoutesHelper.login().absoluteURL(ctx.request(), IdentityProvider.sslEnabled())));
                     }
                 } else {
                     Authorization authorization = configuration.authorization().newInstance();
@@ -218,9 +217,9 @@ public class SecureSocial {
                         return delegate.call(ctx);
                     } else {
                         if ( configuration.ajaxCall() ) {
-                            return forbidden(ajaxCallNotAuthorized());
+                            return Promise.pure((SimpleResult)forbidden(ajaxCallNotAuthorized()));
                         } else {
-                            return redirect(RoutesHelper.notAuthorized());
+                            return Promise.pure(redirect(RoutesHelper.notAuthorized()));
                         }
                     }
                 }
@@ -251,7 +250,7 @@ public class SecureSocial {
      */
     public static class UserAware extends Action<UserAwareAction> {
         @Override
-        public Result call(Http.Context ctx) throws Throwable {
+        public Promise<SimpleResult> call(Http.Context ctx) throws Throwable {
             SecureSocial.fixHttpContext(ctx);
             try {
                 Authenticator authenticator = getAuthenticatorFromRequest(ctx);

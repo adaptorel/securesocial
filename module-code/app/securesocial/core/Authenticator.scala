@@ -1,5 +1,5 @@
 /**
- * Copyright 2013 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
+ * Copyright 2013-2014 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,12 +28,12 @@ import play.api.mvc.{DiscardingCookie, Cookie}
  * An authenticator tracks an authenticated user.
  *
  * @param id The authenticator id
- * @param userId The user id
+ * @param identityId The user id
  * @param creationDate The creation timestamp
  * @param lastUsed The last used timestamp
  * @param expirationDate The expiration time
  */
-case class Authenticator(id: String, userId: UserId, creationDate: DateTime,
+case class Authenticator(id: String, identityId: IdentityId, creationDate: DateTime,
                          lastUsed: DateTime, expirationDate: DateTime)
 {
 
@@ -99,7 +99,9 @@ class DefaultIdGenerator(app: Application) extends IdGenerator(app) {
   //todo: this needs improvement, several threads will wait for the synchronized block in SecureRandom.
   // I will probably need a pool of SecureRandom instances.
   val random = new SecureRandom()
-  val IdSizeInBytes = 128
+  val DefaultSizeInBytes = 128
+  val IdLengthKey = "securesocial.idLengthInBytes"
+  val IdSizeInBytes = app.configuration.getInt(IdLengthKey).getOrElse(DefaultSizeInBytes)
 
   /**
    * Generates a new id using SecureRandom
@@ -208,7 +210,7 @@ object Authenticator {
     val id = use[IdGenerator].generate
     val now = DateTime.now()
     val expirationDate = now.plusMinutes(absoluteTimeout)
-    val authenticator = Authenticator(id, user.id, now, now, expirationDate)
+    val authenticator = Authenticator(id, user.identityId, now, now, expirationDate)
     val r = use[AuthenticatorStore].save(authenticator)
     val result = r.fold( e => Left(e), _ => Right(authenticator) )
     result
@@ -246,6 +248,6 @@ object Authenticator {
   private val DateTimePattern = "yyyy-MM-dd HH:mm:ss"
   private val fmt = org.joda.time.format.DateTimeFormat.forPattern(DateTimePattern)
   private val Sep = "//__//__"
-  def serialize(a: Authenticator): String = List(a.userId.id, a.userId.providerId, a.creationDate.toString(DateTimePattern), a.lastUsed.toString(DateTimePattern), a.expirationDate.toString(DateTimePattern)).mkString(Sep)
-  def deserialize(auth: String): Option[Authenticator] = Option(auth).filter(""!=_.trim) map { a => val s = a.split(Sep); Authenticator("", UserId(s(0), s(1)), DateTime.parse(s(2), fmt), DateTime.parse(s(3), fmt), DateTime.parse(s(4), fmt)) }
+  def serialize(a: Authenticator): String = List(a.identityId.userId, a.identityId.providerId, a.creationDate.toString(DateTimePattern), a.lastUsed.toString(DateTimePattern), a.expirationDate.toString(DateTimePattern)).mkString(Sep)
+  def deserialize(auth: String): Option[Authenticator] = Option(auth).filter(""!=_.trim) map { a => val s = a.split(Sep); Authenticator("", IdentityId(s(0), s(1)), DateTime.parse(s(2), fmt), DateTime.parse(s(3), fmt), DateTime.parse(s(4), fmt)) }
 }

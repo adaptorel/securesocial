@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
+ * Copyright 2012-2014 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ class TwitterProvider(application: Application) extends OAuth1Provider(applicati
       val userId = (me \ Id).as[Int]
       val name = (me \ Name).as[String]
       val profileImage = (me \ ProfileImage).asOpt[String]
-      user.copy(id = UserId(userId.toString, id), fullName = name, avatarUrl = profileImage)
+      user.copy(identityId = IdentityId(userId.toString, id), fullName = name, avatarUrl = profileImage)
 
     } catch {
       case e: Exception => {

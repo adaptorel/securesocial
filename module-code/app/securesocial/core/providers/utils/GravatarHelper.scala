@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
+ * Copyright 2012-2014 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ object GravatarHelper {
         val url = GravatarUrl.format(hash)
         val promise = WS.url(url).get()
         try {
-          val result = Await.result(promise, 10 seconds)
+          val result = Await.result(promise, 10.seconds)
           if (result.status == 200) Some(url) else None
         } catch {
           case e: Exception => {

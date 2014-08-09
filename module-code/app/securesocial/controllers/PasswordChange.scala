@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
+ * Copyright 2012-2014 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package securesocial.controllers
 
 import securesocial.core._
-import play.api.mvc.{AnyContent, Result, Controller}
+import play.api.mvc.{SimpleResult, AnyContent, Controller}
 import com.typesafe.plugin._
 import play.api.Play
 import Play.current
@@ -40,15 +40,25 @@ object PasswordChange extends Controller with SecureSocial {
   val Success = "success"
   val OkMessage = "securesocial.passwordChange.ok"
 
+  /**
+   * The property that specifies the page the user is redirected to after changing the password.
+   */
+  val onPasswordChangeGoTo = "securesocial.onPasswordChangeGoTo"
+
+  /** The redirect target of the handlePasswordChange action. */
+  def onHandlePasswordChangeGoTo = Play.current.configuration.getString(onPasswordChangeGoTo).getOrElse(
+    RoutesHelper.changePasswordPage().url
+  )
 
   case class ChangeInfo(currentPassword: String, newPassword: String)
 
 
   def checkCurrentPassword[A](currentPassword: String)(implicit request: SecuredRequest[A]):Boolean = {
-    use[PasswordHasher].matches(request.user.passwordInfo.get, currentPassword)
+    val maybeHasher = request.user.passwordInfo.flatMap(p => Registry.hashers.get(p.hasher))
+    maybeHasher.map(_.matches(request.user.passwordInfo.get, currentPassword)).getOrElse(false)
   }
 
-  private def execute[A](f: (SecuredRequest[A], Form[ChangeInfo]) => Result)(implicit request: SecuredRequest[A]): Result = {
+  private def execute[A](f: (SecuredRequest[A], Form[ChangeInfo]) => SimpleResult)(implicit request: SecuredRequest[A]): SimpleResult = {
     val form = Form[ChangeInfo](
       mapping(
         CurrentPassword -> nonEmptyText.verifying(
@@ -83,10 +93,11 @@ object PasswordChange extends Controller with SecureSocial {
       form.bindFromRequest()(request).fold (
         errors => BadRequest(use[TemplatesPlugin].getPasswordChangePage(request, errors)),
         info =>  {
-          val newPasswordInfo = use[PasswordHasher].hash(info.newPassword)
+          import scala.language.reflectiveCalls
+          val newPasswordInfo = Registry.hashers.currentHasher.hash(info.newPassword)
           val u = UserService.save( SocialUser(request.user).copy( passwordInfo = Some(newPasswordInfo)) )
           Mailer.sendPasswordChangedNotice(u)(request)
-          val result = Redirect(RoutesHelper.changePasswordPage()).flashing(Success -> Messages(OkMessage))
+          val result = Redirect(onHandlePasswordChangeGoTo).flashing(Success -> Messages(OkMessage))
           Events.fire(new PasswordChangeEvent(u))(request).map( result.withSession(_)).getOrElse(result)
         }
       )

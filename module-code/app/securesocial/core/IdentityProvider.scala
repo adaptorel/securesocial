@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
+ * Copyright 2012-2014 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -150,7 +150,7 @@ object IdentityProvider {
     if ( !result && Play.isProd ) {
       Logger.warn(
         "[securesocial] IMPORTANT: Play is running in production mode but you did not turn SSL on for SecureSocial." +
-          "Not using SSL can make it really easy for an attacker to steal your users credentials and/or the " +
+          "Not using SSL can make it really easy for an attacker to steal your users' credentials and/or the " +
           "authenticator cookie and gain access to the system."
       )
     }
@@ -159,6 +159,6 @@ object IdentityProvider {
 
   val secondsToWait = {
     import scala.concurrent.duration._
-    10 seconds
+    10.seconds
   }
 }

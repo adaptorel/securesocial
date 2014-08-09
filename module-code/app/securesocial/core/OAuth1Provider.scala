@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
+ * Copyright 2012-2014 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,11 +67,9 @@ abstract class OAuth1Provider(application: Application) extends IdentityProvider
       } yield {
         service.retrieveAccessToken(deserialize(cacheKey), verifier) match {
           case Right(token) =>
-            // the Cache api does not have a remove method.  Just set the cache key and expire it after 1 second for
-            // now.
             Right(
               SocialUser(
-                UserId("", id), "", "", "", None, None, authMethod,
+                IdentityId("", id), "", "", "", None, None, authMethod,
                 oAuth1Info = Some(OAuth1Info(token.token, token.secret))
               )
             )
@@ -112,6 +110,7 @@ object OAuth1Provider {
 }
 
 object Implicits {
+  import scala.language.implicitConversions
   private val SEP = "__//__//"
   implicit def requestTokenToSerializable(requestToken: RequestToken): SerializableRequestToken = SerializableRequestToken(requestToken)  
   case class SerializableRequestToken(requestToken: RequestToken) {

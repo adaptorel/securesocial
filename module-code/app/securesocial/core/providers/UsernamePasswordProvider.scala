@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
+ * Copyright 2012-2014 Jorge Aliss (jaliss at gmail dot com) - twitter: @jaliss
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package securesocial.core.providers
 import play.api.data.Form
 import play.api.data.Forms._
 import securesocial.core._
-import play.api.mvc.{PlainResult, Results, Result, Request}
+import play.api.mvc.{SimpleResult, Results, Result, Request}
 import utils.{GravatarHelper, PasswordHasher}
 import play.api.{Play, Application}
 import Play.current
@@ -43,7 +43,7 @@ class UsernamePasswordProvider(application: Application) extends IdentityProvide
     form.fold(
       errors => Left(badRequest(errors, request)),
       credentials => {
-        val userId = UserId(credentials._1, id)
+        val userId = IdentityId(credentials._1, id)
         val result = for (
           user <- UserService.find(userId) ;
           pinfo <- user.passwordInfo ;
@@ -58,7 +58,7 @@ class UsernamePasswordProvider(application: Application) extends IdentityProvide
     )
   }
 
-  private def badRequest[A](f: Form[(String,String)], request: Request[A], msg: Option[String] = None): PlainResult = {
+  private def badRequest[A](f: Form[(String,String)], request: Request[A], msg: Option[String] = None): SimpleResult = {
     Results.BadRequest(use[TemplatesPlugin].getLoginPage(request, f, msg))
   }
 
