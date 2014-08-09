@@ -2,7 +2,8 @@ import play.Project._
 
 name := "securesocial"
 
-version := "2.1.3"
+//sn -> share nothing
+version := "2.1.3.1-sn"
 
 libraryDependencies ++= Seq(
   cache,
@@ -15,11 +16,11 @@ resolvers ++= Seq(
   Resolver.typesafeRepo("releases")
 )
 
-publishMavenStyle := false
+publishMavenStyle := true
 
-publishTo <<= (version) { v: String =>
-  val status = if(v.trim.endsWith("-SNAPSHOT")) "snapshots" else "releases"
-  Some(Resolver.sbtPluginRepo(status))
+publishTo in ThisBuild := {
+  val localPublishRepo = "/Users/dorel/Work/_bitbucket_maven"
+  Some(Resolver.file("releases", new File(localPublishRepo)))
 }
 
 scalacOptions := Seq("-feature", "-deprecation")
