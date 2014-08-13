@@ -89,13 +89,14 @@ object PasswordChange extends Controller with SecureSocial {
   }
 
   def handlePasswordChange = SecuredAction { implicit request =>
+    import securesocial.core.UserService.tenantExtractor
     execute { (request: SecuredRequest[AnyContent], form: Form[ChangeInfo]) =>
       form.bindFromRequest()(request).fold (
         errors => BadRequest(use[TemplatesPlugin].getPasswordChangePage(request, errors)),
         info =>  {
           import scala.language.reflectiveCalls
           val newPasswordInfo = Registry.hashers.currentHasher.hash(info.newPassword)
-          val u = UserService.save( SocialUser(request.user).copy( passwordInfo = Some(newPasswordInfo)) )
+          val u = UserService.save( SocialUser(request.user).copy( passwordInfo = Some(newPasswordInfo)) )(tenantExtractor(request.request))
           Mailer.sendPasswordChangedNotice(u)(request)
           val result = Redirect(onHandlePasswordChangeGoTo).flashing(Success -> Messages(OkMessage))
           Events.fire(new PasswordChangeEvent(u))(request).map( result.withSession(_)).getOrElse(result)

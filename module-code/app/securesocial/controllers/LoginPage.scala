@@ -18,6 +18,7 @@ package securesocial.controllers
 
 import play.api.mvc.{Session, DiscardingCookie, Action, Controller}
 import securesocial.core._
+import securesocial.core.UserService.tenantExtractor
 import play.api.Play
 import Play.current
 import providers.UsernamePasswordProvider

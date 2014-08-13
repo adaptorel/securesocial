@@ -26,6 +26,7 @@ import scala.concurrent.Future
 import scala.Some
 import play.api.mvc.SimpleResult
 import play.api.libs.oauth.ServiceInfo
+import securesocial.core.UserService.tenantExtractor
 
 
 /**
@@ -205,6 +206,7 @@ object SecureSocial {
    * @return
    */
   def currentUser[A](implicit request: RequestHeader):Option[Identity] = {
+    import securesocial.core.UserService.headerTenantExtractor
     request match {
       case securedRequest: SecuredRequest[_] => Some(securedRequest.user)
       case userAware: RequestWithUser[_] => userAware.user

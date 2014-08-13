@@ -26,6 +26,7 @@ import Play.current
 import com.typesafe.plugin._
 import securesocial.controllers.TemplatesPlugin
 import org.joda.time.DateTime
+import securesocial.core.UserService.tenantExtractor
 
 /**
  * A username password provider

@@ -17,7 +17,7 @@
 package securesocial.controllers
 
 import _root_.java.util.UUID
-import play.api.mvc.{Result, Action, Controller}
+import play.api.mvc.{Result, Action, Controller, Request}
 import play.api.data._
 import play.api.data.Forms._
 import play.api.data.validation.Constraints._
@@ -33,6 +33,7 @@ import securesocial.core.providers.Token
 import scala.Some
 import securesocial.core.IdentityId
 import scala.language.reflectiveCalls
+import securesocial.core.UserService.tenantExtractor
 
 
 /**
@@ -85,7 +86,8 @@ object Registration extends Controller {
   val formWithUsername = Form[RegistrationInfo](
     mapping(
       UserName -> nonEmptyText.verifying( Messages(UserNameAlreadyTaken), userName => {
-          UserService.find(IdentityId(userName,providerId)).isEmpty
+        //UserService.find(IdentityId(userName,providerId)).isEmpty
+        throw new UnsupportedOperationException("No username support with multitenancy")
       }),
       FirstName -> nonEmptyText,
       LastName -> nonEmptyText,
@@ -153,7 +155,7 @@ object Registration extends Controller {
     else NotFound(views.html.defaultpages.notFound.render(request, None))
   }
 
-  private def createToken(email: String, isSignUp: Boolean): (String, Token) = {
+  private def createToken[A](email: String, isSignUp: Boolean)(implicit request: Request[A]): (String, Token) = {
     val uuid = UUID.randomUUID().toString
     val now = DateTime.now
 
@@ -208,7 +210,7 @@ object Registration extends Controller {
     else NotFound(views.html.defaultpages.notFound.render(request, None))
   }
 
-  private def executeForToken(token: String, isSignUp: Boolean, f: Token => Result): Result = {
+  private def executeForToken[A](token: String, isSignUp: Boolean, f: Token => Result)(implicit request: Request[A]): Result = {
     UserService.findToken(token) match {
       case Some(t) if !t.isExpired && t.isSignUp == isSignUp => {
         f(t)

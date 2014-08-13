@@ -17,9 +17,14 @@
 package securesocial.core
 
 import play.api.{Logger, Plugin, Application}
+import play.api.mvc.{Request, RequestHeader}
 import providers.{UsernamePasswordProvider, Token}
 import play.api.libs.concurrent.Akka
 import akka.actor.Cancellable
+
+trait SecureTenant {
+  def name: String
+}
 
 /**
  * A trait that provides the means to find and save users
@@ -28,14 +33,18 @@ import akka.actor.Cancellable
  * @see DefaultUserService
  */
 trait UserService {
-
+  
+  implicit def tenantExtractor[A](implicit request: Request[A]): SecureTenant
+  
+  implicit def headerTenantExtractor(implicit request: RequestHeader): SecureTenant
+  
   /**
    * Finds a SocialUser that maches the specified id
    *
    * @param id the user id
    * @return an optional user
    */
-  def find(id: IdentityId):Option[Identity]
+  def find(id: IdentityId)(implicit tenant: SecureTenant):Option[Identity]
 
   /**
    * Finds a Social user by email and provider id.
@@ -47,14 +56,14 @@ trait UserService {
    * @param providerId - the provider id
    * @return
    */
-  def findByEmailAndProvider(email: String, providerId: String):Option[Identity]
+  def findByEmailAndProvider(email: String, providerId: String)(implicit tenant: SecureTenant):Option[Identity]
 
   /**
    * Saves the user.  This method gets called when a user logs in.
    * This is your chance to save the user information in your backing store.
    * @param user
    */
-  def save(user: Identity): Identity
+  def save(user: Identity)(implicit tenant: SecureTenant): Identity
 
   /**
    * Saves a token.  This is needed for users that
@@ -65,7 +74,7 @@ trait UserService {
    *
    * @param token The token to save
    */
-  def save(token: Token)
+  def save(token: Token)(implicit tenant: SecureTenant)
 
 
   /**
@@ -77,7 +86,7 @@ trait UserService {
    * @param token the token id
    * @return
    */
-  def findToken(token: String): Option[Token]
+  def findToken(token: String)(implicit tenant: SecureTenant): Option[Token]
 
   /**
    * Deletes a token
@@ -87,7 +96,7 @@ trait UserService {
    *
    * @param uuid the token id
    */
-  def deleteToken(uuid: String)
+  def deleteToken(uuid: String)(implicit tenant: SecureTenant)
 
   /**
    * Deletes all expired tokens
@@ -146,45 +155,48 @@ abstract class UserServicePlugin(application: Application) extends Plugin with U
 object UserService {
   var delegate: Option[UserService] = None
 
+  implicit def tenantExtractor[A](implicit request: Request[A]): SecureTenant = delegate.map(_.tenantExtractor).getOrElse(throw new IllegalStateException("UserService not initialized"))
+  implicit def headerTenantExtractor(implicit request: RequestHeader): SecureTenant = delegate.map(_.headerTenantExtractor).getOrElse(throw new IllegalStateException("UserService not initialized"))
+  
   def setService(service: UserService) {
     delegate = Some(service)
   }
 
-  def find(id: IdentityId):Option[Identity] = {
+  def find(id: IdentityId)(implicit tenant: SecureTenant):Option[Identity] = {
     delegate.map( _.find(id) ).getOrElse {
       notInitialized()
       None
     }
   }
 
-  def findByEmailAndProvider(email: String, providerId: String):Option[Identity] = {
+  def findByEmailAndProvider(email: String, providerId: String)(implicit tenant: SecureTenant):Option[Identity] = {
     delegate.map( _.findByEmailAndProvider(email, providerId) ).getOrElse {
       notInitialized()
       None
     }
   }
 
-  def save(user: Identity): Identity = {
+  def save(user: Identity)(implicit tenant: SecureTenant): Identity = {
     delegate.map( _.save(user) ).getOrElse {
       notInitialized()
       user
     }
   }
 
-  def save(token: Token) {
+  def save(token: Token)(implicit tenant: SecureTenant) {
     delegate.map( _.save(token) ).getOrElse {
       notInitialized()
     }
   }
 
-  def findToken(token: String): Option[Token] =  {
+  def findToken(token: String)(implicit tenant: SecureTenant): Option[Token] =  {
     delegate.map( _.findToken(token)).getOrElse {
       notInitialized()
       None
     }
   }
 
-  def deleteToken(token: String) {
+  def deleteToken(token: String)(implicit tenant: SecureTenant) {
     delegate.map( _.deleteToken(token)).getOrElse {
       notInitialized()
     }
