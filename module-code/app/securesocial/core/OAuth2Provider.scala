@@ -29,8 +29,10 @@ import scala.concurrent.TimeoutException
  * Base class for all OAuth2 providers
  */
 abstract class OAuth2Provider(application: Application, jsonResponse: Boolean = true) extends IdentityProvider(application) {
-  val settings = createSettings()
+  val defaultSettings = createSettings()
 
+  def settings[A](implicit request: Request[A]) = defaultSettings
+  
   def authMethod = AuthenticationMethod.OAuth2
 
   private def createSettings(): OAuth2Settings = {

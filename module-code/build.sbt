@@ -3,7 +3,7 @@ import play.Project._
 name := "securesocial"
 
 //snmt -> share nothing / multitenant
-version := "2.1.3.3-snmt"
+version := "2.1.3.4-snmt"
 
 libraryDependencies ++= Seq(
   cache,
